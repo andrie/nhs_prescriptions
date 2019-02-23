@@ -1,0 +1,12 @@
+name: england_nhs_practice_prescribing_data
+title: England NHS practice prescribing data
+username: andrie
+account: andrie
+server: colorado.rstudio.com
+hostUrl: https://colorado.rstudio.com/rsc/__api__
+appId: 2158
+bundleId: 25121
+url: https://colorado.rstudio.com:443/rsc/content/2158/
+when: 1550786643.44893
+asMultiple: FALSE
+asStatic: TRUE

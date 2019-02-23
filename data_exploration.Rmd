@@ -1,0 +1,214 @@
+---
+title: "England NHS practice prescribing data - exploration"
+output:
+  html_document
+---
+
+```{r, message=FALSE}
+library(readr)
+library(dplyr)
+library(stringr)
+library(magrittr)
+
+source("R/plot_postcode.R")
+```
+
+# Data sources
+
+This analysis takes the NHS (National Health Service) England prescription level data and combines this with a postcode lookup to get spend in geographical regions.
+
+The data contains monthly data for every surgery (general medical practitioner) in England, and aggregates the prescriptions for every drug or treatment in that surgery for the month.
+
+Sources:
+
+* [Postcode download](https://www.freemaptools.com/download-uk-postcode-lat-lng.htm)
+
+* [GP practice prescription data](https://data.gov.uk/dataset/176ae264-2484-4afe-a297-d51798eb8228/gp-practice-prescribing-data-presentation-level)
+
+
+# Data description (copied from NHS website)
+
+Source: https://data.gov.uk/dataset/176ae264-2484-4afe-a297-d51798eb8228/gp-practice-prescribing-data-presentation-level
+
+What does the data cover?
+
+General practice prescribing data is a list of all medicines, dressings and appliances that are prescribed and dispensed each month. A record will only be produced when this has occurred and there is no record for a zero total.
+
+For each practice in England, including GP Practices, the following information is presented at presentation level for each medicine, dressing and appliance, (by presentation name):
+
+* the total number of items prescribed and dispensed
+* the total net ingredient cost
+* the total actual cost
+* the total quantity
+
+The data covers NHS prescriptions written in England and dispensed in the community in the UK. Prescriptions written in England but dispensed outside England are included. The data includes prescriptions written by GPs and other non-medical prescribers (such as nurses and pharmacists) who are attached to GP practices.
+
+Practices are identified only by their national code, so an additional data file - linked to the first by the practice code - provides further detail in relation to the practice.
+
+Presentations are identified only by their BNF code, so an additional data file - linked to the first by the BNF code - provides the chemical name for that presentation.
+
+
+# List local data sources
+
+```{r}
+data_folder <- "C:/Users/apdev/Downloads/NHS_prescription_data/Nov_2018"
+list.files(data_folder)
+```
+
+
+
+# Plot uk postcode map 
+
+
+[Postcodes in the UK](https://en.wikipedia.org/wiki/Postcodes_in_the_United_Kingdom) describes the location for delivery of mail very accurately. Typically a postcode locates an address at the granularity of a single street, and the combination of house number and postcode is sufficient to identify the mailing address.
+
+
+Read postcode file
+
+```{r}
+pc <- read_csv(
+  file.path(data_folder, "postcode-outcodes.csv"), 
+  col_types = "dcdd"
+) %>% 
+  filter(latitude != 0 & longitude != 0) %>% 
+  rename(outcode = "postcode")
+```
+
+Plot postcodes
+
+```{r}
+pc %>% 
+  plot_postcode(title = "UK postcodes (outcode level)")
+```
+
+
+# Read address file with surgery addresses
+
+
+```{r}
+addr <- file.path(data_folder, "T201811ADDR BNFT.CSV") %>% 
+  read_csv(col_names = c(
+    "period", 
+    "practice",
+    "surgery",
+    "address",
+    "road",
+    "town",
+    "shire",
+    "postcode"
+  ))
+addr
+```
+
+# Read the chemical substances file
+
+```{r}
+chem <- file.path(data_folder, "T201811CHEM SUBS.CSV") %>% 
+  read_csv(
+    skip = 1,
+    col_names = c("bnf_code", "name", "NA"),
+    col_types = "ccc"
+  ) %>% 
+  select(-one_of("NA"))
+chem %>% head()
+```
+
+
+# Read prescription data
+
+First create a function to clean the (rather messy) csv file
+
+```{r}
+read_csv_ignore_last <- function(x, n_max, col_names, ...){
+  if (base::missing(col_names) || base::is.null(col_names)) {
+    col_names <- readLines(x, n = 1) %>% 
+      strsplit(",") %>% 
+      extract2(1) %>% 
+      str_trim() %>% 
+      # names() %>% 
+      head(-1) %>%
+      tolower() %>%
+      gsub(" ", "_", .)
+  }
+  
+  suppressWarnings(
+    read_csv(x, skip = 1, n_max = n_max, col_names = col_names, ...)
+  )
+}
+```
+
+```{r}
+pres <- file.path(data_folder, "T201811PDPI BNFT.CSV") %>% 
+  read_csv_ignore_last(n_max = 10e3, col_types = "ccccciddii")
+```
+
+
+```{r}
+pres %>% 
+  head()
+```
+
+How big is the data?
+
+```{r}
+pres %>% nrow()
+```
+
+# Create some aggregated summaries
+
+Total expenditure by drug group
+
+```{r}
+pres_totals <- 
+  pres %>% 
+  group_by(period, bnf_name) %>% 
+  summarise_if(is.numeric, sum)
+```
+
+
+```{r}
+pres_totals %>% 
+  arrange(-act_cost) %>% 
+  head()
+```
+
+Aggregate by practice
+
+```{r}
+pres %>% 
+  group_by(period, practice) %>% 
+  summarize_if(is.numeric, sum) %>% 
+  arrange(-act_cost) %>% 
+  head()
+```
+
+
+# Plot surgeries
+
+
+```{r}
+surgeries <- 
+  addr %>% 
+  select(period, practice, postcode)
+surgeries %>% head()
+```
+
+
+```{r}
+outcode <- function(x){gsub("(.*?) .*", "\\1", x)}
+surgeries %>% 
+  mutate(outcode = outcode(postcode)) %>% 
+  left_join(pc, by = "outcode") %>% 
+  tidyr::drop_na() %>% 
+  plot_postcode(alpha = 0.03)
+```
+
+
+```{r}
+pres %>% 
+  group_by(period, practice) %>% 
+  summarize_if(is.numeric, sum) %>% 
+  left_join(surgeries, by = c("practice", "period")) %>% 
+  arrange(-act_cost) %>% 
+  head()
+```
