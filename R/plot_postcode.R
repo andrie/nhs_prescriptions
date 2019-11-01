@@ -2,6 +2,7 @@
 library(ggplot2)
 library(maps)
 library(mapproj)
+library(hexbin)
 
 
 
@@ -21,7 +22,8 @@ library(mapproj)
 #' @examples
 plot_postcode <- function(dat,
                           colour = "blue", size = 0.1, alpha = 0.25,
-                          title = NULL){
+                          title = NULL,
+                          hex = FALSE){
   uk <- map_data(
     "mapdata::worldHires",
     region = c(
@@ -41,13 +43,27 @@ plot_postcode <- function(dat,
       data = uk,
       aes(x = long, y = lat, group = group),
       fill = "white", colour = "grey80"
-    ) +
-    geom_point(
+    )
+
+  if (hex) {
+    p <- p + geom_hex(
       data = dat,
       aes(x = longitude, y = latitude),
-      size = size, colour = colour, alpha = alpha
+      colour = "grey90",
+      bins = c(20, 60)
     ) +
-    coord_map("conic", 55)
+      coord_fixed(ratio = 2) +
+      scale_fill_gradient(low = "#ddeeff", high = "blue", trans = "log10")
+
+  } else {
+    p <- p +
+      geom_point(
+        data = dat,
+        aes(x = longitude, y = latitude),
+        size = size, colour = colour, alpha = alpha
+      ) +
+      coord_map("conic", 55)
+  }
 
   if (!missing(title) && !is.null(title)) p <- p + ggtitle(title)
 

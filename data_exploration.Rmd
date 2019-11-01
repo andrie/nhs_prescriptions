@@ -9,6 +9,7 @@ library(readr)
 library(dplyr)
 library(stringr)
 library(magrittr)
+library(mapdata)
 
 source("R/plot_postcode.R")
 ```

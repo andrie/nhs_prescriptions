@@ -5,3 +5,6 @@
 
 
 *.html
+*.csv
+logs
+*.log
