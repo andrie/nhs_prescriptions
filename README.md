@@ -13,19 +13,19 @@ example.
 
 ## Setup
 
-  - Install packages
-    
-    ``` r
-      install.packages(c(
-      "sparklyr",
-      "arrow",
-      "tidyverse",
-      "mapdata"
-    ))
-    ```
+Install packages
 
-  - Install spark
-    
-    ``` r
-    sparklyr::spark_install()
-    ```
+``` r
+install.packages(c(
+  "sparklyr",
+  "arrow",
+  "tidyverse",
+  "mapdata"
+))
+```
+
+Install spark
+
+``` r
+sparklyr::spark_install()
+```

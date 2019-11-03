@@ -19,19 +19,19 @@ The goal of `nhs_prescriptions` is to demonstrate operations on reasonably large
 
 ## Setup
 
-* Install packages
+Install packages
 
-  ```r
-    install.packages(c(
-    "sparklyr",
-    "arrow",
-    "tidyverse",
-    "mapdata"
-  ))
-  ```
+```{r, eval = FALSE}
+install.packages(c(
+  "sparklyr",
+  "arrow",
+  "tidyverse",
+  "mapdata"
+))
+```
 
-* Install spark
+Install spark
 
-  ```r
-  sparklyr::spark_install()
-  ```
+```{r, eval = FALSE}
+sparklyr::spark_install()
+```
