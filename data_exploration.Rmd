@@ -10,6 +10,7 @@ library(dplyr)
 library(stringr)
 library(magrittr)
 library(mapdata)
+library(pins)
 
 source("R/plot_postcode.R")
 ```
@@ -49,13 +50,15 @@ Practices are identified only by their national code, so an additional data file
 Presentations are identified only by their BNF code, so an additional data file - linked to the first by the BNF code - provides the chemical name for that presentation.
 
 
-# List local data sources
+# Pin required data files
 
-```{r}
-data_folder <- "C:/Users/apdev/Downloads/NHS_prescription_data/Nov_2018"
-list.files(data_folder)
+The data in this example is available in S3 bucket.  Also, the examples use the `pins` package to store the data in a local cache.
+
+To pin the data, use:
+
+```{r, eval = FALSE}
+# source("pin_data.R")
 ```
-
 
 
 # Plot uk postcode map 
@@ -67,10 +70,11 @@ list.files(data_folder)
 Read postcode file
 
 ```{r}
-pc <- read_csv(
-  file.path(data_folder, "postcode-outcodes.csv"), 
+pc <- 
+  pin_get("postcode-outcodes.csv") %>%
+  read_csv(
   col_types = "dcdd"
-) %>% 
+  ) %>% 
   filter(latitude != 0 & longitude != 0) %>% 
   rename(outcode = "postcode")
 ```
@@ -87,7 +91,8 @@ pc %>%
 
 
 ```{r}
-addr <- file.path(data_folder, "T201811ADDR BNFT.CSV") %>% 
+addr <- 
+  pin_get("t201901addr_bnft.csv") %>%
   read_csv(col_names = c(
     "period", 
     "practice",
@@ -97,21 +102,23 @@ addr <- file.path(data_folder, "T201811ADDR BNFT.CSV") %>%
     "town",
     "shire",
     "postcode"
-  ))
+  ),
+  col_types = "dccccccc"
+  )
 addr
 ```
 
 # Read the chemical substances file
 
 ```{r}
-chem <- file.path(data_folder, "T201811CHEM SUBS.CSV") %>% 
+chem <- 
+  pin_get("t201901chem_subs.csv") %>%
   read_csv(
     skip = 1,
-    col_names = c("bnf_code", "name", "NA"),
-    col_types = "ccc"
-  ) %>% 
-  select(-one_of("NA"))
-chem %>% head()
+    col_names = c("bnf_code", "name"),
+    col_types = "cc"
+  )
+chem
 ```
 
 
@@ -130,6 +137,7 @@ read_csv_ignore_last <- function(x, n_max, col_names, ...){
       head(-1) %>%
       tolower() %>%
       gsub(" ", "_", .)
+    col_names[10] <- "period"
   }
   
   suppressWarnings(
@@ -139,15 +147,13 @@ read_csv_ignore_last <- function(x, n_max, col_names, ...){
 ```
 
 ```{r}
-pres <- file.path(data_folder, "T201811PDPI BNFT.CSV") %>% 
+pres <- 
+  pin_get("t201901pdpi_bnft.csv") %>%
   read_csv_ignore_last(n_max = 10e3, col_types = "ccccciddii")
+pres
 ```
 
 
-```{r}
-pres %>% 
-  head()
-```
 
 How big is the data?
 
@@ -169,8 +175,7 @@ pres_totals <-
 
 ```{r}
 pres_totals %>% 
-  arrange(-act_cost) %>% 
-  head()
+  arrange(-act_cost)
 ```
 
 Aggregate by practice
@@ -179,8 +184,7 @@ Aggregate by practice
 pres %>% 
   group_by(period, practice) %>% 
   summarize_if(is.numeric, sum) %>% 
-  arrange(-act_cost) %>% 
-  head()
+  arrange(-act_cost)
 ```
 
 
@@ -191,7 +195,7 @@ pres %>%
 surgeries <- 
   addr %>% 
   select(period, practice, postcode)
-surgeries %>% head()
+surgeries
 ```
 
 
@@ -210,6 +214,5 @@ pres %>%
   group_by(period, practice) %>% 
   summarize_if(is.numeric, sum) %>% 
   left_join(surgeries, by = c("practice", "period")) %>% 
-  arrange(-act_cost) %>% 
-  head()
+  arrange(-act_cost)
 ```

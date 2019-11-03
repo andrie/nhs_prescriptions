@@ -1,10 +1,9 @@
 library(arrow)
 library(sparklyr)
 library(dplyr)
+library(pins)
 
 sc <- spark_connect(master = "local")
-
-data_folder <- "C:/Users/apdev/Downloads/NHS_prescription_data/Nov_2018"
 
 # sed
 
@@ -18,24 +17,23 @@ source("R/spark_read_prescriptions.R")
 pc <-
   sc %>%
   spark_read_postcodes(
-  file.path(data_folder, "postcode-outcodes.csv")
-)
+    pin_get("postcode-outcodes.csv")
+  )
 pc
 
 source("R/plot_postcode.R")
 pc %>%
   plot_postcode(title = "UK postcodes (outcode level)")
 
-source("R/plot_postcode.R")
 pc %>%
   plot_postcode(title = "UK postcodes (outcode level)", hex = TRUE)
 
 
 
-system.time({
 pres <- sc %>%
-  spark_read_prescriptions(file = "T201811PDPI_BNFT.csv")
-})
+  spark_read_prescriptions(
+    pin_get("t201901pdpi_bnft.csv")
+  )
 
 sc %>% src_tbls()
 pres %>% head(10)
@@ -67,7 +65,8 @@ pres %>%
   ) %>%
   arrange(desc(act_cost))
 
-pres %>%
+top_practices <-
+  pres %>%
   group_by(period, practice) %>%
   summarise(
     items = sum(items, na.rm = TRUE),
@@ -75,4 +74,31 @@ pres %>%
     nic = sum(nic, na.rm = TRUE),
     act_cost = sum(act_cost, na.rm = TRUE)
   ) %>%
-  arrange(desc(act_cost))
+  arrange(desc(act_cost)) %>%
+  head(100)
+
+top_practices
+
+
+practices <-
+  sc %>%
+  spark_read_csv(
+    pin_get("t201901addr_bnft.csv"),
+    columns = c(
+      "period",
+      "practice",
+      "surgery",
+      "address",
+      "road",
+      "town",
+      "shire",
+      "postcode"
+    )
+  )
+
+practices
+
+top_practices %>%
+  left_join(practices, by = "practice") %>%
+  collect() %>%
+  View()
