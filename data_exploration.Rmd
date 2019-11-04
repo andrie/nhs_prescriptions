@@ -10,6 +10,8 @@ library(dplyr)
 library(stringr)
 library(magrittr)
 library(mapdata)
+library(mapproj)
+library(hexbin)
 library(pins)
 
 source("R/plot_postcode.R")
