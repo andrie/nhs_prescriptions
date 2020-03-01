@@ -19,6 +19,16 @@ The goal of `nhs_prescriptions` is to demonstrate operations on reasonably large
 
 ## Setup
 
+Install spark and arrow system requirements
+
+```{sh, eval = FALSE}
+sudo apt get install openjdk-8jre
+sudo pip install pyarrow==0.15.*
+sudo apt-get install libparquet-dev
+```
+
+
+
 Install packages
 
 ```{r, eval = FALSE}
@@ -32,8 +42,10 @@ install.packages(c(
 ))
 ```
 
-Install spark
+Install spark and arrow
+
 
 ```{r, eval = FALSE}
+arrow::install_arrow()
 sparklyr::spark_install()
 ```
